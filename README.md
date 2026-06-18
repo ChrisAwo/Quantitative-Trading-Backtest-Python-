@@ -154,3 +154,5 @@ The final results were converted into CSV files for further analysis and compari
 ---
 
 ## Power BI Dashboard
+![backtest 1](backtest1/1)
+![backtest 2](backtest1/2)
