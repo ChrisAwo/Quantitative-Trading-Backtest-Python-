@@ -149,6 +149,8 @@ This strategy focuses on breakout signals. It performed slightly weaker overall 
 
 ## Output
 
-The final results were converted into CSV files for further analysis and comparison.
+The final results were converted into CSV files for further analysis and comparison in Power BI
 
 ---
+
+## Power BI Dashboard
