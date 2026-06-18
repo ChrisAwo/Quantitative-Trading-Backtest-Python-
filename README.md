@@ -32,21 +32,96 @@ The flow:
 starting_bal = 1000
 start = datetime(2020,1,1)
 end = datetime(2023,1,1)
+```
+- Load and prepare ticker data
 interval = '1d'
 tickers = ['MSFT', 'GLD', 'TLT']
-
 transaction_cost = 0.001
 slippage = 0.0005
 cost = transaction_cost + slippage
-- 
-- Load and prepare ticker data
+```
+
 - Apply trading logic inside a backtest function
+```python
+def backtest(ticker):
+    price = yf.download(tickers=ticker, start=start, end=end, interval=interval)
+    price.columns = price.columns.get_level_values(0)
+    price = price.reset_index()
+    close = price['Close'].squeeze()
+    
+    price['Asset'] = ticker
+
+    price['middle'] = close.rolling(window=20).mean()
+    price['std']    = close.rolling(window=20).std()
+    price['upper']  = price['middle'] + (2 * price['std'])
+    price['lower']  = price['middle'] - (2 * price['std'])
+
+    price = price.dropna(subset=['middle']).reset_index(drop=True)
+    close = price['Close'].squeeze()
+
+    long_signal  = close.shift(1) < price['lower'].shift(1)   
+    short_signal = close.shift(1) > price['upper'].shift(1)
+    exit_long  = close >= price['middle']
+    exit_short = close <= price['middle']
+
+    price['Position'] = 0
+    price.loc[long_signal,  'Position'] = 1
+    price.loc[short_signal, 'Position'] = -1
+    price.loc[exit_long  & (price['Position'] == 1),  'Position'] = 0
+    price.loc[exit_short & (price['Position'] == -1), 'Position'] = 0
+```
+
 - Calculate returns, positions, and trade outcomes
-- Include transaction costs and slippage
+```python
+   price['Returns'] = price['Close'] / price['Close'].shift(1) 
+        
+    price['Sys_Ret'] = np.where(
+        price['Position'] == 1, price['Returns'],
+        np.where(
+            price['Position'] == -1, 
+            2 - price['Returns'], 1
+        )
+    )
+
+    n_years = len(price) / 252
+    price['Sys_bal'] = starting_bal * price['Sys_Ret'].cumprod()
+    CAGR = (price['Sys_bal'].iloc[-1] / starting_bal) ** (1 / n_years) - 1
+    vol = (price['Sys_Ret'] - 1).std() * np.sqrt(252)
+    daily_rf = (1 + 0.05) ** (1/252) - 1
+    daily_excess = price['Sys_Ret'] - 1 - daily_rf
+    sharpe = (daily_excess.mean() / daily_excess.std()) * np.sqrt(252)
+    price['drawdown'] = (price['Sys_bal'] - price['Sys_bal'].cummax()) / price['Sys_bal'].cummax()
+    max_dd = price['drawdown'].min()
+```
+
 - Store results in dataframes for comparison
+   ```python
+    result = {
+        'Ticker'  : ticker,
+        'CAGR'    : round(CAGR, 4),
+        'Sharpe'  : round(sharpe, 4),
+        'Vol'     : round(vol, 4),
+        'Max_DD'  : round(max_dd, 4),
+        'Final_Bal': round(price['Sys_bal'].iloc[-1], 2)
+    }
+
+    return price, result
+    
+new_price = []
+new_result = []
+```
 
 A loop runs the backtest across multiple tickers to evaluate performance across different assets.
-
+```python
+for ticker in tickers:
+    price, result = backtest(ticker)
+    new_price.append(price) 
+    new_result.append(result)
+        
+final = pd.concat(new_price, ignore_index=True)
+summary_df = pd.DataFrame(new_result)
+print(summary_df.to_string(index=False))
+```
 ---
 
 ## Strategy Summary
