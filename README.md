@@ -34,6 +34,7 @@ start = datetime(2020,1,1)
 end = datetime(2023,1,1)
 ```
 - Load and prepare ticker data
+```python
 interval = '1d'
 tickers = ['MSFT', 'GLD', 'TLT']
 transaction_cost = 0.001
@@ -95,7 +96,7 @@ def backtest(ticker):
 ```
 
 - Store results in dataframes for comparison
-   ```python
+```python
     result = {
         'Ticker'  : ticker,
         'CAGR'    : round(CAGR, 4),
@@ -107,8 +108,8 @@ def backtest(ticker):
 
     return price, result
     
-new_price = []
-new_result = []
+  new_price = []
+  new_result = []
 ```
 
 A loop runs the backtest across multiple tickers to evaluate performance across different assets.
